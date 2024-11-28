@@ -1,5 +1,5 @@
-# Use the official Node.js image as the base image
-FROM node:14
+# Use the official Node.js Alpine image as the base image
+FROM node:14-alpine
 
 # Set the working directory inside the container
 WORKDIR /usr/src/app
@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install the application dependencies
-RUN npm install
+RUN npm install --production
 
 # Copy the rest of your application code to the working directory
 COPY . .
