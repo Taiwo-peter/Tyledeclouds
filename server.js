@@ -30,7 +30,7 @@ app.post('/api/contact', (req, res) => {
 });
 
 // API to handle sign-up form submission
-app.post('/signup', async (req, res) => {
+app.post('/api/signup', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -65,7 +65,7 @@ app.post('/signup', async (req, res) => {
 
 // Example endpoint
 app.get('/api/data', (req, res) => {
-    res.json({ message: "Hello from backend!" });
+    res.json({ message: "Hello from the backend!" });
 });
 
 // Start server
