@@ -2,14 +2,31 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const https = require('https'); // Import HTTPS module
+const fs = require('fs'); // Import FS module to read certificate files
 
-const app = express();
-const PORT = 5000; // Port number
+const app = express(); // Declare the app variable only once
+const PORT = 443; // Port number
+const HOST = '0.0.0.0'; // Listen on all network interfaces
+
+// Load SSL certificate files
+const options = {
+    key: fs.readFileSync('ssl/key.pem'), // Path to your private key
+    cert: fs.readFileSync('ssl/cert.pem'), // Path to your certificate
+    // ca: fs.readFileSync('path/to/your/ca-bundle.pem') // Optional: Path to CA bundle if required
+};
 
 // Middleware
 app.use(cors()); // Enables cross-origin requests
 app.use(bodyParser.json()); // Parses JSON data
 app.use(bodyParser.urlencoded({ extended: true })); // Parses URL-encoded data
+app.use(express.static('frontend')); // Serves static files from the "frontend" folder
+
+// Middleware and routes
+app.get('/', (req, res) => {
+    res.send('Hello, HTTPS world!');
+});
+
 
 // Serve frontend files
 app.use(express.static('frontend')); // Serves static files from the "frontend" folder
@@ -33,6 +50,7 @@ app.post('/api/contact', (req, res) => {
 app.post('/api/signup', async (req, res) => {
     const { email, password } = req.body;
 
+    // Validate input
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required.' });
     }
@@ -49,18 +67,23 @@ app.post('/api/signup', async (req, res) => {
     }
 
     // Check if the user already exists
-    const userExists = users.find((user) => user.email === email);
+    const userExists = users.find(user => user.email === email);
     if (userExists) {
         return res.status(400).json({ error: 'Email is already registered.' });
     }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Add user to the dummy database
-    users.push({ email, password: hashedPassword });
-    console.log(`New user signed up: Email: ${email}`);
-    res.status(201).json({ message: 'Sign-up successful! Welcome to Tyledeclouds.' });
+        // Add user to the dummy database
+        users.push({ email, password: hashedPassword });
+        console.log(`New user signed up: Email: ${email}`);
+        res.status(201).json({ message: 'Sign-up successful! Welcome to Tyledeclouds.' });
+    } catch (error) {
+        console.error('Error during sign-up:', error);
+        res.status(500).json({ error: 'Internal server error. Please try again later.' });
+    }
 });
 
 // Example endpoint
@@ -68,7 +91,11 @@ app.get('/api/data', (req, res) => {
     res.json({ message: "Hello from the backend!" });
 });
 
+// Create HTTPS server
+const server = https.createServer(options, app);
+
 // Start server
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+    console.log(`Server is running on https://${HOST}:${PORT}`);
 });
+

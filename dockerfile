@@ -13,8 +13,12 @@ RUN npm install --production
 # Copy the rest of your application code to the working directory
 COPY . .
 
+# Copy SSL certificate files to the container
+# Assuming your SSL files are in a folder named 'ssl' in your project
+COPY ssl ./ssl
+
 # Expose the port that the app runs on
-EXPOSE 5000
+EXPOSE 443
 
 # Command to run the application
 CMD ["node", "server.js"]
