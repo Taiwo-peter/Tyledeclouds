@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "443:443"  # Map port 443 on the host to port 443 in the container
+    volumes:
+      - .:/usr/src/app  # Mount the current directory to the working directory in the container
+    environment:
+      - NODE_ENV=production  # Set the environment variable for production

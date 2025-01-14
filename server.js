@@ -97,5 +97,9 @@ const server = https.createServer(options, app);
 // Start server
 server.listen(PORT, HOST, () => {
     console.log(`Server is running on https://${HOST}:${PORT}`);
+<<<<<<< HEAD
 });
 
+=======
+});
+>>>>>>> master
