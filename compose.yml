@@ -1,0 +1,8 @@
+services:
+  qpp:
+   build:
+    context: .
+    dockerfile: dockerfile
+   image: tyledecloud:${WORKFLOW_ID}
+   ports:
+      - 443:443

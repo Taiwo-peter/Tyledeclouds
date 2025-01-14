@@ -1,0 +1,48 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - tyledecloud-server  # Trigger on pushes to the main branch
+# 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to DigitalOcean Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DIGITALOCEAN_USERNAME }}  # Your DigitalOcean username
+          password: ${{ secrets.DIGITALOCEAN_TOKEN }}     # Your DigitalOcean API token
+
+      - name: Build and Tag Docker Image
+        run: |
+          docker build -t registry.digitalocean.com/cloudy001/tyledecloud:latest .
+
+      - name: Push Docker Image
+        run: |
+          docker push registry.digitalocean.com/cloudy001/tyledecloud:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # Ensure the build job completes before deploying
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Ubuntu Droplet
+        env:
+          HOST: ${{ secrets.DROPLET_IP }}  # Your Droplet's IP address
+          USER: ${{ secrets.DROPLET_USER }}  # Your Droplet's SSH username
+          PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}  # Your SSH private key
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem

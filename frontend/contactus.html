@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tyledeclouds Website</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Updated path to CSS -->
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar Section -->
+    <nav class="navbar">
+        <div class="navbar__container">
+            <a href="index.html" id="navbar__logo"><i class="fas fa-cloud"></i>Tyledeclouds</a>
+            <div class="navbar__toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+            <ul class="navbar__menu">
+                <li class="navbar__item">
+                    <a href="home.html" class="navbar__links">Home</a>
+                </li>
+                <li class="navbar__item">
+                    <a href="services.html" class="navbar__links">Services</a>
+                </li>
+                <li class="navbar__item">
+                    <a href="contactus.html" class="navbar__links">Contact</a>
+                </li>
+                <li class="navbar__item">
+                    <a href="aboutus.html" class="navbar__links">About Us</a>
+                </li>
+                <li class="navbar__btn">
+                    <a href="signup.html" class="button">Sign Up</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="main">
+        <div class="main__container">
+            <div class="main__content">
+                <h1>Contact</h1>
+                <h2>Us</h2>
+                <p>Get in touch with us today to transform your business with cloud solutions.</p>
+                <div class="button main__btn"><a href="#contact-form">Click Here</a></div>
+            </div>
+            <div class="main__img--container">
+                <img src="images/pic14.svg" alt="Contact illustration" id="main__img">
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Form Section -->
+    <div class="contact-form" id="contact-form">
+        <h2>Contact Us</h2>
+        <form id="contactForm" action="#" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+            
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" required></textarea>
+            
+            <button type="submit">Send Message</button>
+        </form>
+    </div>
+
+    <script>
+        // Select the contact form by its ID
+        document.getElementById('contactForm').addEventListener('submit', async function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            // Gather form data
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries()); // Convert FormData to a plain object
+
+            try {
+                // Send a POST request to the backend API
+                const response = await fetch('http://localhost:5000/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json', // Specify JSON format
+                    },
+                    body: JSON.stringify(data), // Convert data object to JSON string
+                });
+
+                // Parse the response from the server
+                const result = await response.json();
+
+                if (response.ok) {
+                    // If the request was successful, display the server message
+                    alert(result.message || 'Your message was sent successfully.');
+                    this.reset(); // Clear the form fields
+                } else {
+                    // If the server responds with an error, display it
+                    alert(result.error || 'There was an issue sending your message.');
+                }
+            } catch (error) {
+                // Handle any network or unexpected errors
+                console.error('Error:', error);
+                alert('An unexpected error occurred. Please try again.');
+            }
+        });
+    </script>
+
+    <!-- Footer Section -->
+    <div class="footer__container">
+        <div class="footer__links">
+            <div class="footer__link--wrapper">
+                <div class="footer__link--items">
+                    <h2>About Us</h2>
+                    <a href="/">How it works</a>
+                    <a href="/">Testimonials</a>
+                    <a href="/">Careers</a>
+                    <a href="/">Investment</a>
+                    <a href="/">Terms of Services</a>
+                </div>
+                <div class="footer__link--items">
+                    <h2>Contact Us</h2>
+                    <a href="/">Contact</a>
+                    <a href="/">Support</a>
+                    <a href="/">Destinations</a>
+                    <a href="/">Sponsorships</a>
+                </div>
+            </div>
+            <div class="footer__link--wrapper">
+                <div class="footer__link--items">
+                    <h2>Videos</h2>
+                    <a href="/">Submit Videos</a>
+                    <a href="/">Ambassadors</a>
+                    <a href="/">Agency</a>
+                    <a href="/">Influencer</a>
+                </div>
+                <div class="footer__link--items">
+                    <h2>Social Media</h2>
+                    <a href="/">Instagram</a>
+                    <a href="/">YouTube</a>
+                    <a href="/">Facebook</a>
+                    <a href="/">Twitter</a>
+                </div>
+            </div>
+        </div>
+        <div class="social__media">
+            <div class="social__media--wrap">
+                <div class="footer__logo">
+                    <a href="index.html" id="footer__logo"><i class="fas fa-cloud"></i>Tyledeclouds</a>
+                </div>
+                <p class="website__rights">© Tyledeclouds 2020. All rights reserved</p>
+                <div class="social__icons">
+                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-facebook"></i></a>
+                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-instagram"></i></a>
+                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-twitter"></i></a>
+                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-linkedin"></i></a>
+                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script> <!-- Updated path to JS -->
+</body>
+</html>
