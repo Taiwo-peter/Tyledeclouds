@@ -3,8 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - tyledecloud-server  # Trigger on pushes to the main branch
-# 
+      - tyledecloud-server  # Trigger on pushes to the specified branch
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -46,3 +46,11 @@ jobs:
           PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}  # Your SSH private key
         run: |
           echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem  # Secure the private key
+          ssh -i private_key.pem $USER@$HOST << 'EOF'
+            # Commands to deploy the Docker image
+            docker pull registry.digitalocean.com/cloudy001/tyledecloud:latest
+            docker stop tylendecloud || true  # Stop the current container if it exists
+            docker rm tylendecloud || true     # Remove the current container if it exists
+            docker run -d --name tylendecloud registry.digitalocean.com/cloudy001/tyledecloud:latest
+          EOF
