@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tyledeclouds Website</title>
     <!-- Link to CSS file -->
-    <link rel="stylesheet" href="styles.css"> <!-- Updated path to CSS -->
+    <link rel="stylesheet" href="styles.css">
     
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -38,7 +38,7 @@
     <!-- Signup Section -->
     <div class="signup-section">
         <h2>Create an Account</h2>
-        <form id="signupForm" class="signup-form" onsubmit="redirectToHomePage(event)">
+        <form id="signupForm" class="signup-form">
             <div class="form-group">
                 <label for="email">Email:</label>
                 <input type="email" id="email" name="email" required>
@@ -55,120 +55,92 @@
     </div>
 
     <script>
-        function redirectToHomePage(event) {
-            event.preventDefault(); // Prevent the default form submission
-            
-            // Here you can add your form submission logic (e.g., AJAX request)
-            
-            // Optionally, display a message or handle errors here
-            document.getElementById('formMessage').innerText = "Account created successfully!";
-            document.getElementById('formMessage').style.display = "block";
-
-            // Redirect to the home page after a short delay
-            setTimeout(function() {
-                window.location.href = 'home.html'; // Replace with your home page URL
-            }, 2000); // 2 seconds delay
-        }
-    </script>
-
-    <!-- Footer Section -->
-    <div class="footer__container">
-        <div class="footer__links">
-<<<<<<< HEAD
-            <div class="footer__link--wrapper">
-=======
->>>>>>> master
-                <div class="footer__link--items">
-                    <h2>About Us</h2>
-                    <a href="/">How it works</a>
-                    <a href="/">Testimonials</a>
-                    <a href="/">Careers</a>
-                    <a href="/">Investment</a> <!-- Corrected spelling -->
-                    <a href="/">Terms of Services</a>
-                </div>
-                <div class="footer__link--items">
-                    <h2>Contact Us</h2>
-                    <a href="/">Contact</a>
-                    <a href="/">Support</a>
-                    <a href="/">Destinations</a>
-                    <a href="/">Sponsorships</a>
-                </div>
-            </div>
-            <div class="footer__link--wrapper">
-                <div class="footer__link--items">
-                    <h2>Videos</h2>
-                    <a href="/">Submit Videos</a>
-                    <a href="/">Ambassadors</a>
-                    <a href="/">Agency</a> <!-- Corrected spelling -->
-                    <a href="/">Influencer</a>
-                </div>
-                <div class="footer__link--items">
-                    <h2>Social Media</h2>
-                    <a href="/">Instagram</a>
-                    <a href="/">YouTube</a> <!-- Corrected spelling -->
-                    <a href="/">Facebook</a>
-                    <a href="/">Twitter</a>
-                </div>
-            </div>
-        </div>
-        <div class="social__media">
-            <div class="social__media--wrap">
-                <div class="footer__logo">
-                    <a href="index.html" id="footer__logo"><i class="fas fa-cloud"></i>Tyledeclouds</a>
-                </div>
-                <p class="website__rights">© Tyledeclouds 2020. All rights reserved</p>
-                <div class="social__icons">
-                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-facebook"></i></a>
-                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-instagram"></i></a>
-                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-twitter"></i></a>
-                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-linkedin"></i></a>
-                    <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-youtube"></i></a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const form = e.target;
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const formMessage = document.getElementById('formMessage');
 
             try {
-                const response = await fetch('http://localhost:5000/signup', {
+                const response = await fetch('https://localhost:443/api/signup', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
                 });
 
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Success message
-                    document.getElementById('formMessage').textContent = result.message;
-                    document.getElementById('formMessage').style.color = 'green';
-                    document.getElementById('formMessage').style.display = 'block';
-                    form.reset(); // Clear form
+                    formMessage.textContent = result.message;
+                    formMessage.style.color = 'green';
+                    formMessage.style.display = 'block';
+                    document.getElementById('signupForm').reset(); // Clear the form
                 } else {
-                    // Display error message
-                    document.getElementById('formMessage').textContent = result.error || 'An error occurred.';
-                    document.getElementById('formMessage').style.color = 'red';
-                    document.getElementById('formMessage').style.display = 'block';
+                    formMessage.textContent = result.error || 'An error occurred.';
+                    formMessage.style.color = 'red';
+                    formMessage.style.display = 'block';
                 }
             } catch (error) {
-                document.getElementById('formMessage').textContent = 'Failed to communicate with the server.';
-                document.getElementById('formMessage').style.color = 'red';
-                document.getElementById('formMessage').style.display = 'block';
+                formMessage.textContent = 'Failed to communicate with the server. Please try again later.';
+                formMessage.style.color = 'red';
+                formMessage.style.display = 'block';
             }
         });
     </script>
-<<<<<<< HEAD
-    <script src="app.js"></script>
+
+    <!-- Footer Section -->
+    <div class="footer__container">
+        <div class="footer__links">
+            <div class="footer__link--items">
+                <h2>About Us</h2>
+                <a href="/">How it works</a>
+                <a href="/">Testimonials</a>
+                <a href="/">Careers</a>
+                <a href="/">Investment</a>
+                <a href="/">Terms of Services</a>
+            </div>
+            <div class="footer__link--items">
+                <h2>Contact Us</h2>
+                <a href="/">Contact</a>
+                <a href="/">Support</a>
+                <a href="/">Destinations</a>
+                <a href="/">Sponsorships</a>
+            </div>
+        </div>
+        <div class="footer__link--wrapper">
+            <div class="footer__link--items">
+                <h2>Videos</h2>
+                <a href="/">Submit Videos</a>
+                <a href="/">Ambassadors</a>
+                <a href="/">Agency</a>
+                <a href="/">Influencer</a>
+            </div>
+            <div class="footer__link--items">
+                <h2>Social Media</h2>
+                <a href="/">Instagram</a>
+                <a href="/">YouTube</a>
+                <a href="/">Facebook</a>
+                <a href="/">Twitter</a>
+            </div>
+        </div>
+    </div>
+    <div class="social__media">
+        <div class="social__media--wrap">
+            <div class="footer__logo">
+                <a href="index.html" id="footer__logo"><i class="fas fa-cloud"></i>Tyledeclouds</a>
+            </div>
+            <p class="website__rights">&copy; Tyledeclouds 2025. All rights reserved</p>
+            <div class="social__icons">
+                <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-facebook"></i></a>
+                <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-instagram"></i></a>
+                <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-twitter"></i></a>
+                <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-linkedin"></i></a>
+                <a href="/" class="social__icon--link" target="_blank"><i class="fab fa-youtube"></i></a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
-=======
-</body>
-</html>
->>>>>>> master

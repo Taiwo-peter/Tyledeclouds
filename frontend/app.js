@@ -26,7 +26,3 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch((error) => console.error('Error fetching user data:', error));
 });
-<<<<<<< HEAD
-
-=======
->>>>>>> master

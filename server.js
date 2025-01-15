@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const https = require('https'); // Import HTTPS module
 const fs = require('fs'); // Import FS module to read certificate files
+const mysql = require('mysql2'); // Import MySQL package
 
 const app = express(); // Declare the app variable only once
 const PORT = 443; // Port number
@@ -13,7 +15,6 @@ const HOST = '0.0.0.0'; // Listen on all network interfaces
 const options = {
     key: fs.readFileSync('ssl/key.pem'), // Path to your private key
     cert: fs.readFileSync('ssl/cert.pem'), // Path to your certificate
-    // ca: fs.readFileSync('path/to/your/ca-bundle.pem') // Optional: Path to CA bundle if required
 };
 
 // Middleware
@@ -22,17 +23,27 @@ app.use(bodyParser.json()); // Parses JSON data
 app.use(bodyParser.urlencoded({ extended: true })); // Parses URL-encoded data
 app.use(express.static('frontend')); // Serves static files from the "frontend" folder
 
+// MySQL connection setup
+const db = mysql.createConnection({
+    host: process.env.DB_HOST, // Your MySQL host
+    user: process.env.DB_USER, // Your MySQL username
+    password: process.env.DB_PASSWORD, // Your MySQL password
+    database: process.env.DB_NAME // Your MySQL database name
+});
+
+// Connect to the database
+db.connect(err => {
+    if (err) {
+        console.error('Database connection failed:', err);
+        return;
+    }
+    console.log('Connected to MySQL database.');
+});
+
 // Middleware and routes
 app.get('/', (req, res) => {
     res.send('Hello, HTTPS world!');
 });
-
-
-// Serve frontend files
-app.use(express.static('frontend')); // Serves static files from the "frontend" folder
-
-// Dummy database for demonstration
-const users = [];
 
 // API to handle contact form submission
 app.post('/api/contact', (req, res) => {
@@ -41,6 +52,15 @@ app.post('/api/contact', (req, res) => {
     if (!name || !email || !message) {
         return res.status(400).json({ error: 'All fields are required.' });
     }
+
+    // Save contact message to database (optional)
+    const query = 'INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)';
+    db.query(query, [name, email, message], (err) => {
+        if (err) {
+            console.error('Error saving contact message:', err);
+            return res.status(500).json({ error: 'Internal server error. Please try again later.' });
+        }
+    });
 
     console.log(`New contact form submission: Name: ${name}, Email: ${email}, Message: ${message}`);
     res.status(200).json({ message: 'Your message has been received. We will get back to you soon!' });
@@ -67,23 +87,35 @@ app.post('/api/signup', async (req, res) => {
     }
 
     // Check if the user already exists
-    const userExists = users.find(user => user.email === email);
-    if (userExists) {
-        return res.status(400).json({ error: 'Email is already registered.' });
-    }
+    const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
+    db.query(checkUserQuery, [email], async (err, results) => {
+        if (err) {
+            console.error('Error checking user existence:', err);
+            return res.status(500).json({ error: 'Internal server error. Please try again later.' });
+        }
+        if (results.length > 0) {
+            return res.status(400).json({ error: 'Email is already registered.' });
+        }
 
-    try {
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        try {
+            // Hash the password
+            const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Add user to the dummy database
-        users.push({ email, password: hashedPassword });
-        console.log(`New user signed up: Email: ${email}`);
-        res.status(201).json({ message: 'Sign-up successful! Welcome to Tyledeclouds.' });
-    } catch (error) {
-        console.error('Error during sign-up:', error);
-        res.status(500).json({ error: 'Internal server error. Please try again later.' });
-    }
+            // Add user to the database
+            const insertUserQuery = 'INSERT INTO users (email, password) VALUES (?, ?)';
+            db.query(insertUserQuery, [email, hashedPassword], (err) => {
+                if (err) {
+                    console.error('Error during sign-up:', err);
+                    return res.status(500).json({ error: 'Internal server error. Please try again later.' });
+                }
+                console.log(`New user signed up: Email: ${email}`);
+                res.status(201).json({ message: 'Sign-up successful! Welcome to Tyledeclouds.' });
+            });
+        } catch (error) {
+            console.error('Error during password hashing:', error);
+            res.status(500).json({ error: 'Internal server error. Please try again later.' });
+        }
+    });
 });
 
 // Example endpoint
@@ -97,9 +129,4 @@ const server = https.createServer(options, app);
 // Start server
 server.listen(PORT, HOST, () => {
     console.log(`Server is running on https://${HOST}:${PORT}`);
-<<<<<<< HEAD
 });
-
-=======
-});
->>>>>>> master
