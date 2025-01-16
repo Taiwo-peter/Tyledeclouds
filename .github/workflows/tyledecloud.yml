@@ -42,6 +42,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Add Host Key to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
+
       - name: Deploy to Ubuntu Droplet
         env:
           HOST: ${{ secrets.DROPLET_IP }}  # Your Droplet's IP address
@@ -64,19 +69,14 @@ jobs:
 
           # SSH into the Droplet and deploy the Docker container
           ssh -i private_key.pem $USER@$HOST << 'EOF'
-            set -e  # Exit on any error
-            # Pull the latest Docker image
             docker pull registry.digitalocean.com/cloudy001/tyledecloud:latest
-            
-            # Stop and remove the current container if it exists
             docker stop tylendecloud || true
             docker rm tylendecloud || true
-            
-            # Run the new Docker container with SSL certificates
             docker run -d --name tylendecloud \
               -v /path/to/ssl:/ssl:ro \
               registry.digitalocean.com/cloudy001/tyledecloud:latest
           EOF
 
           # Clean up sensitive files
-          rm -rf ssl private_key.pem
+          rm private_key.pem
+          rm -rf ssl
