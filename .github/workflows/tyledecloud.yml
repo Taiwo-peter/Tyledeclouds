@@ -37,36 +37,39 @@ jobs:
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
-      # Step 4: Save Docker Image Metadata
-      - name: Save Image Metadata
-        run: echo "${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}:${{ env.IMAGE_TAG }}" > image_name.txt
-      - name: Upload Image Metadata
+      # Step 4: Save Docker Registry Metadata
+      - name: Save Registry Metadata
+        run: echo "${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}" > docker_registry.txt
+      - name: Upload Registry Metadata
         uses: actions/upload-artifact@v2
         with:
-          name: docker-image
-          path: image_name.txt
+          name: docker-registry
+          path: docker_registry.txt
 
   deploy:
+    name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build-and-push  # Ensure the build-and-push job completes before deploying
+    needs: build-and-push
+    env:
+      DO_DIRECTORY: ssl
+      IMAGE_TAG: latest
+      DO_COMPOSE: docker-compose.yml
 
     steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      # Step 2: Download Docker Image Metadata
-      - name: Download Image Metadata
+      # Step 1: Download Docker Registry Metadata
+      - name: Download Docker Registry Metadata
         uses: actions/download-artifact@v2
         with:
-          name: docker-image
-      - name: Load Image Metadata
-        id: load-image
-        run: |
-          IMAGE_NAME=$(cat image_name.txt)
-          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          name: docker-registry
+          path: .
 
-      # Step 3: Log in to DigitalOcean Container Registry
+      # Step 2: Read Docker Registry Metadata
+      - name: Read Docker Registry Metadata
+        run: |
+          DOCR_REGISTRY=$(cat docker_registry.txt)
+          echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
+
+      # Step 3: Authenticate with Docker Registry
       - name: Log in to DigitalOcean Registry
         run: |
           echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login ${{ env.DOCR_REGISTRY }} -u doctl --password-stdin
@@ -85,15 +88,17 @@ jobs:
           PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}
           SSL_CERTIFICATE: ${{ secrets.SSL_CERTIFICATE }}
           SSL_PRIVATE_KEY: ${{ secrets.SSL_PRIVATE_KEY }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          DOCR_REGISTRY: ${{ env.DOCR_REGISTRY }}
+          DO_REPOSITORY: ${{ env.DO_REPOSITORY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           # Create SSL directory and certificate files
-          mkdir -p ssl
-          echo "$SSL_CERTIFICATE" > ssl/certificate.crt
-          echo "$SSL_PRIVATE_KEY" > ssl/private.key
+          mkdir -p ${{ env.DO_DIRECTORY }}
+          echo "$SSL_CERTIFICATE" > ${{ env.DO_DIRECTORY }}/certificate.crt
+          echo "$SSL_PRIVATE_KEY" > ${{ env.DO_DIRECTORY }}/private.key
 
           # Secure the private key file
-          chmod 600 ssl/private.key
+          chmod 600 ${{ env.DO_DIRECTORY }}/private.key
 
           # Create a private SSH key file
           echo "$PRIVATE_KEY" > private_key.pem
@@ -101,11 +106,11 @@ jobs:
 
           # SSH into the Droplet and deploy the Docker container
           ssh -i private_key.pem $USER@$HOST << EOF
-            # Log in to DigitalOcean Container Registry
+            # Log in to DigitalOcean registry
             echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login ${{ env.DOCR_REGISTRY }} -u doctl --password-stdin
 
             # Pull the latest Docker image
-            docker pull $IMAGE_NAME
+            docker pull $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG
 
             # Stop and remove the current container if it exists
             docker stop tyledecloud || true
@@ -114,9 +119,9 @@ jobs:
             # Run the new Docker container with SSL certificates
             docker run -d --name tyledecloud \
               -v /path/to/ssl:/ssl:ro \
-              $IMAGE_NAME
+              $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG
           EOF
 
           # Clean up sensitive files
           rm private_key.pem
-          rm -rf ssl
+          rm -rf ${{ env.DO_DIRECTORY }}
