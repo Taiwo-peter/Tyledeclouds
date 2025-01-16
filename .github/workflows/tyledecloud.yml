@@ -53,7 +53,7 @@ jobs:
     env:
       DO_DIRECTORY: ssl
       IMAGE_TAG: latest
-      DO_COMPOSE: docker-compose.yml
+      DO_COMPOSE: compose.yml
 
     steps:
       # Step 1: Download Docker Registry Metadata
