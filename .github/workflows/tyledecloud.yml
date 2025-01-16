@@ -16,7 +16,7 @@ jobs:
     steps:
       # Step 1: Checkout Code
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # Step 2: Authenticate with DigitalOcean Container Registry
       - name: Log in to DigitalOcean Registry
@@ -41,7 +41,7 @@ jobs:
       - name: Save Registry Metadata
         run: echo "${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}" > docker_registry.txt
       - name: Upload Registry Metadata
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docker-registry
           path: docker_registry.txt
@@ -58,7 +58,7 @@ jobs:
     steps:
       # Step 1: Download Docker Registry Metadata
       - name: Download Docker Registry Metadata
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: docker-registry
           path: .
