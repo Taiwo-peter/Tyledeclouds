@@ -8,6 +8,7 @@ on:
 env:
   DOCR_REGISTRY: registry.digitalocean.com
   DO_REPOSITORY: cloudy001/tyledecloud
+  IMAGE_TAG: latest
 
 jobs:
   build-and-push:
@@ -26,13 +27,9 @@ jobs:
           registry: ${{ env.DOCR_REGISTRY }}
           username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          # Optionally configure credential helpers for security
-          # credential-helper: true
-
+        
       # Step 3: Build and Push Docker Image
       - name: Build and Push Docker Image
-        env:
-          IMAGE_TAG: latest
         run: |
           IMAGE_NAME="${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}:${{ env.IMAGE_TAG }}"
           echo "Building and pushing $IMAGE_NAME"
@@ -83,39 +80,28 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
 
-      # Step 5: Deploy to Ubuntu Droplet
-      - name: Deploy to Ubuntu Droplet
-        env:
-          HOST: ${{ secrets.DROPLET_IP }}
-          USER: ${{ secrets.DROPLET_USER }}
-          PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}
-          SSL_CERTIFICATE: ${{ secrets.SSL_CERTIFICATE }}
-          SSL_PRIVATE_KEY: ${{ secrets.SSL_PRIVATE_KEY }}
-          DOCR_REGISTRY: ${{ env.DOCR_REGISTRY }}
-          DO_REPOSITORY: ${{ env.DO_REPOSITORY }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        run: |
-          # Create SSL directory and certificate files
-          mkdir -p ${{ env.DO_DIRECTORY }}
-          echo "$SSL_CERTIFICATE" > ${{ env.DO_DIRECTORY }}/certificate.crt
-          echo "$SSL_PRIVATE_KEY" > ${{ env.DO_DIRECTORY }}/private.key
-
-          # Secure the private key file
-          chmod 600 ${{ env.DO_DIRECTORY }}/private.key
-
-          # Create a private SSH key file
-          echo "$PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-
-          # SSH into the Droplet and deploy the Docker container
-          ssh -i private_key.pem $USER@$HOST << EOF
-            # Log in to DigitalOcean registry
-            echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login ${{ env.DOCR_REGISTRY }} -u doctl --password-stdin
-
-            # Pull the latest Docker image
-            docker pull $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG
-
-            # Stop and remove the current container if it exists
+      # Step 5: Deploy to Droplet using SSH Action
+      - name: SSH Login and Deploy to Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          envs: DOCR_REGISTRY,DO_REPOSITORY,IMAGE_TAG
+          script: |
+            echo "Environment Variables:"
+            echo "DOCR_REGISTRY: $DOCR_REGISTRY"
+            echo "DO_REPOSITORY: $DO_REPOSITORY"
+            echo "IMAGE_TAG: $IMAGE_TAG"
+            echo "Pulling Docker Image $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG"
+            
+            # SSH commands for deploying the container
+            cd /home/ubuntu/ && \
+            docker login $DOCR_REGISTRY -u doctl --password-stdin && \
+            docker pull $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG && \
+            
+            # Stop and remove the current container if exists
             docker stop tyledecloud || true
             docker rm tyledecloud || true
 
@@ -123,8 +109,10 @@ jobs:
             docker run -d --name tyledecloud \
               -v /path/to/ssl:/ssl:ro \
               $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG
-          EOF
 
-          # Clean up sensitive files
-          rm private_key.pem
-          rm -rf ${{ env.DO_DIRECTORY }}
+            if [[ $? == 0 ]]; then
+              echo "Deployment Successful!!!"
+            else
+              echo "Error! Unable to deploy the container."
+              exit 1
+            fi
