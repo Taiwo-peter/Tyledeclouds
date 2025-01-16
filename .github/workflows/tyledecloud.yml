@@ -49,8 +49,8 @@ jobs:
 
       - name: Log in to Docker Hub
         run: |
-            echo ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} | docker login registry.digitalocean.com -u ${{ secrets.DIGITALOCEAN_USERNAME }} --password-stdin
-
+            echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login registry.digitalocean.com -u doctl --password-stdin
+  
       - name: Deploy to Ubuntu Droplet
         env:
           HOST: ${{ secrets.DROPLET_IP }}  # Your Droplet's IP address
