@@ -26,6 +26,8 @@ jobs:
           registry: ${{ env.DOCR_REGISTRY }}
           username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          # Optionally configure credential helpers for security
+          # credential-helper: true
 
       # Step 3: Build and Push Docker Image
       - name: Build and Push Docker Image
