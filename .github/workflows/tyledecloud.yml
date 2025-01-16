@@ -21,6 +21,11 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
+      - name: Authenticate with Docker Registry
+        run: |
+            echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login registry.digitalocean.com -u doctl --password-stdin
+  
+
       - name: Build and Tag Docker Image
         run: |
           docker build -t registry.digitalocean.com/cloudy001/tyledecloud:latest .
