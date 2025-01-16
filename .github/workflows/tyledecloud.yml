@@ -40,6 +40,8 @@ jobs:
       # Step 4: Save Docker Registry Metadata
       - name: Save Registry Metadata
         run: echo "${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}" > docker_registry.txt
+
+      # Step 5: Upload Registry Metadata
       - name: Upload Registry Metadata
         uses: actions/upload-artifact@v3
         with:
@@ -53,7 +55,6 @@ jobs:
     env:
       DO_DIRECTORY: ssl
       IMAGE_TAG: latest
-      DO_COMPOSE: compose.yml
 
     steps:
       # Step 1: Download Docker Registry Metadata
