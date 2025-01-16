@@ -47,6 +47,10 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
 
+      - name: Log in to Docker Hub
+        run: |
+            echo ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} | docker login registry.digitalocean.com -u ${{ secrets.DIGITALOCEAN_USERNAME }} --password-stdin
+
       - name: Deploy to Ubuntu Droplet
         env:
           HOST: ${{ secrets.DROPLET_IP }}  # Your Droplet's IP address
