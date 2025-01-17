@@ -1,138 +1,87 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline for DigitalOcean
 
 on:
   push:
     branches:
       - tyledecloud-server  # Trigger on pushes to the specified branch
 
-env:
-  DOCR_REGISTRY: registry.digitalocean.com
-  DO_REPOSITORY: cloudy001/tyledecloud
-  IMAGE_TAG: latest
 
 jobs:
-  build-and-push:
+  build:
+    name: Build tyldecloudserver_app
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Check out code
+      uses: actions/checkout@v2
 
-      # Step 2: Install Docker Compose
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
+    - name: Authenticate with DigitalOcean Registry
+      uses: digitalocean/action-docr-login@v1
+      with:
+        api-token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      # Step 3: Set Environment Variables
-      - name: Set Environment Variables
-        run: |
-          echo "WORKFLOW_ID=${{ github.run_id }}" >> $GITHUB_ENV
-          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> $GITHUB_ENV
-          echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> $GITHUB_ENV
-          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> $GITHUB_ENV
-          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> $GITHUB_ENV
+    - name: Build, tag, and push image to DOCR
+      id: build-and-push
+      env:
+        DOCR_REGISTRY: ${{ steps.login-docr.outputs.registry }}
+        REPOSITORY: registry.digitalocean.com/cloudy001
+      run: |
+        echo "$DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
+        docker build -t $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER} .
+        docker push $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}
+        echo "$DOCR_REGISTRY" > docr_registry.txt
 
-      # Step 4: Authenticate with DigitalOcean Container Registry
-      - name: Log in to DigitalOcean Registry
-        id: login-docr
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.DOCR_REGISTRY }}
-          username: doctl  # Use 'doctl' as username for DigitalOcean
-          password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      # Step 5: Build and Push Docker Image using Docker Compose
-      # Build and Push Docker Image
-      - name: Build and Push Docker Image
-        run: |
-          IMAGE_NAME="${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}:${{ env.WORKFLOW_ID }}"
-          echo "Building and pushing $IMAGE_NAME"
-          docker-compose build
-          # Tag the image after building
-          docker tag ${{ env.DO_REPOSITORY }}:$IMAGE_TAG $IMAGE_NAME
-          # Push the image to the registry
-          docker push $IMAGE_NAME
-
-
-      # Step 6: Save Docker Registry Metadata
-      - name: Save Registry Metadata
-        run: echo "${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}" > docker_registry.txt
-
-      # Step 7: Upload Registry Metadata
-      - name: Upload Registry Metadata
-        uses: actions/upload-artifact@v3
-        with:
-          name: docker-registry
-          path: docker_registry.txt
+    - name: Upload DOCR Registry
+      uses: actions/upload-artifact@v2
+      with:
+        name: docr-registry
+        path: docr_registry.txt
 
   deploy:
-    name: Deploy to Production
+    name: Deploy tyldecloudserver to dev
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: build
     env:
-      DO_REPOSITORY: cloudy001/tyledecloud
-      DIRECTORY: Tyledeclouds
+      REPOSITORY: registry.digitalocean.com/cloudy001
+      DIRECTORY: Tyledecloud
       COMPOSE: compose.yml
 
     steps:
-      # Step 1: Download Docker Registry Metadata
-      - name: Download Docker Registry Metadata
-        uses: actions/download-artifact@v3
-        with:
-          name: docker-registry
-          path: .
+    - name: Download DOCR Registry
+      uses: actions/download-artifact@v2
+      with:
+        name: docr-registry
+        path: .
 
-      # Step 2: Read Docker Registry Metadata
-      - name: Read Docker Registry Metadata
-        run: |
-          DOCR_REGISTRY=$(cat docker_registry.txt)
-          echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
+    - name: Read DOCR Registry
+      run: |
+        DOCR_REGISTRY=$(cat docr_registry.txt)
+        echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
 
-      # Step 3: Authenticate with Docker Registry
-      - name: Log in to DigitalOcean Registry
-        run: |
-          echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login ${{ env.DOCR_REGISTRY }} -u doctl --password-stdin
+    - name: SSH Login to DigitalOcean Droplet
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DROPLET_IP }}
+        username: ${{ secrets.DROPLET_USER }}
+        key: ${{ secrets.DROPLET_SSH_KEY }}
+        port: ${{ secrets.PORT }}
+        envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,DOCR_REGISTRY,REPOSITORY,DIRECTORY,COMPOSE
+        script: |
+          echo "Environment Variables:"
+          echo "GITHUB_TRIGGERING_ACTOR: $GITHUB_TRIGGERING_ACTOR"
+          echo "GITHUB_RUN_NUMBER: $GITHUB_RUN_NUMBER"
+          echo "DOCR_REGISTRY: $DOCR_REGISTRY"
+          echo "REPOSITORY: $REPOSITORY"
+          echo "DIRECTORY: $DIRECTORY"
+          echo "COMPOSE: $COMPOSE"
+          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated - \nPulling build artifact $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
+          cd $DIRECTORY && yq -y -i '.services.web.image = "${DOCR_REGISTRY}/${REPOSITORY}:${GITHUB_RUN_NUMBER}"' $COMPOSE && \
+          docker compose up --build --force-recreate -d
+          if [[ $? == 0 ]]; then
+            echo "Deployment Successful!!!"
+          else
+            echo "Error!!!!! Can not recreate service update"
+            exit 1
+          fi
 
-      # Step 4: Add Host Key to Known Hosts
-      - name: Add Host Key to Known Hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
 
-      # SSH Login and Deploy to Droplet
-      - name: SSH Login and Deploy to Droplet
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: ${{ secrets.DROPLET_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.PORT }}
-          envs: DOCR_REGISTRY,DO_REPOSITORY,IMAGE_TAG
-          script: |
-            echo "Pulling Docker Image $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG"
 
-            # Ensure the directory exists
-            mkdir -p /home/ubuntu/deployment  # Create a directory for the deployment
-            cd /home/ubuntu/deployment && \
-            
-            # Log into Docker and pull the image
-            echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login $DOCR_REGISTRY -u doctl --password-stdin && \
-            docker pull $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG && \
-            
-            # Stop and remove the existing container if it exists
-            docker stop tyledecloud || true
-            docker rm tyledecloud || true
-
-            # Run the new Docker container with SSL certificates
-            docker run -d --name tyledecloud \
-              -v /path/to/ssl:/ssl:ro \
-              $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG
-
-            if [[ $? == 0 ]]; then
-              echo "Deployment Successful!!!"
-            else
-              echo "Error! Unable to deploy the container."
-              exit 1
-            fi
