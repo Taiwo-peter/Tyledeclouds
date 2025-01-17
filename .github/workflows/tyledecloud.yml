@@ -14,10 +14,10 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: Authenticate with DigitalOcean Registry
-      uses: digitalocean/action-docr-login@v1
+    - name: Login to DigitalOcean Container Registry
+      uses: docker/login-action@v3
       with:
-        api-token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
     - name: Build, tag, and push image to DOCR
       id: build-and-push
