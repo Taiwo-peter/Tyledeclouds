@@ -1,9 +1,9 @@
 version: '3'
 services:
-  app:
-    image: tyldecloudserver_app:${WORKFLOW_ID}
-    build:
-      context: .
-      dockerfile: dockerfile
-    ports:
+  web:
+   build:
+    context: .
+    dockerfile: dockerfile
+   image: tyldecloudserver_app:${WORKFLOW_ID}
+   ports:
       - "443:443"
