@@ -31,7 +31,7 @@ jobs:
         echo "$DOCR_REGISTRY" > docr_registry.txt
 
     - name: Upload DOCR Registry
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: docr-registry
         path: docr_registry.txt
@@ -47,7 +47,7 @@ jobs:
 
     steps:
     - name: Download DOCR Registry
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: docr-registry
         path: .
