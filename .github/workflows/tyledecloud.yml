@@ -44,16 +44,17 @@ jobs:
           password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       # Step 5: Build and Push Docker Image using Docker Compose
+      # Build and Push Docker Image
       - name: Build and Push Docker Image
         run: |
           IMAGE_NAME="${{ env.DOCR_REGISTRY }}/${{ env.DO_REPOSITORY }}:${{ env.WORKFLOW_ID }}"
           echo "Building and pushing $IMAGE_NAME"
-          # Build the Docker Compose services
           docker-compose build
           # Tag the image after building
           docker tag ${{ env.DO_REPOSITORY }}:$IMAGE_TAG $IMAGE_NAME
           # Push the image to the registry
           docker push $IMAGE_NAME
+
 
       # Step 6: Save Docker Registry Metadata
       - name: Save Registry Metadata
@@ -100,7 +101,7 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
 
-      # Step 5: Deploy to Droplet using SSH Action
+      # SSH Login and Deploy to Droplet
       - name: SSH Login and Deploy to Droplet
         uses: appleboy/ssh-action@v1.0.3
         with:
