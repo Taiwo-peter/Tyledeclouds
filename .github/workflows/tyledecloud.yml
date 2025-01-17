@@ -95,13 +95,13 @@ jobs:
             echo "DO_REPOSITORY: $DO_REPOSITORY"
             echo "IMAGE_TAG: $IMAGE_TAG"
             echo "Pulling Docker Image $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG"
-            
-            # Make sure the directory exists
+
+            # Ensure the directory exists
             mkdir -p /home/ubuntu/deployment  # Create a directory for the deployment
             cd /home/ubuntu/deployment && \
             
             # Log into Docker and pull the image
-            docker login $DOCR_REGISTRY -u doctl --password-stdin && \
+            echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login $DOCR_REGISTRY -u doctl --password-stdin && \
             docker pull $DOCR_REGISTRY/$DO_REPOSITORY:$IMAGE_TAG && \
             
             # Stop and remove the existing container if it exists
