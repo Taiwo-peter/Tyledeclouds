@@ -24,8 +24,8 @@ jobs:
     - name: Build, tag, and push image to DOCR
       id: build-and-push
       env:
-        DOCR_REGISTRY:  registry.digitalocean.com
-        REPOSITORY: cloudy001
+        DOCR_REGISTRY: registry.digitalocean.com/cloudy001
+        REPOSITORY: tyldecloudserver_app
       run: |
         echo "$DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
         docker build -t $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER} .
