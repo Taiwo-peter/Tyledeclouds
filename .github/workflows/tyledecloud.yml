@@ -76,8 +76,14 @@ jobs:
           echo "DIRECTORY: $DIRECTORY"
           echo "COMPOSE: $COMPOSE"
           echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated - \nPulling build artifact $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
-          cd $DIRECTORY && yq -y -i '.services.web.image = "${DOCR_REGISTRY}/${REPOSITORY}:${GITHUB_RUN_NUMBER}"' $COMPOSE && \
+  
+          # Updating the image in docker-compose.yaml using yq (correct syntax for yq)
+          cd $DIRECTORY && yq eval '.services.web.image = "${DOCR_REGISTRY}/${REPOSITORY}:${GITHUB_RUN_NUMBER}"' -i $COMPOSE && \
+  
+          # Running Docker Compose to build and recreate the services
           docker compose up --build --force-recreate -d
+
+          # Checking the exit status to determine if the deployment was successful
           if [[ $? == 0 ]]; then
             echo "Deployment Successful!!!"
           else
