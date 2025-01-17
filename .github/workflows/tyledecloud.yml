@@ -69,9 +69,11 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: build
     env:
-      IMAGE_TAG: latest
+      DO_REPOSITORY: cloudy001/tyledecloud
+      DIRECTORY: Tyledeclouds
+      COMPOSE: compose.yml
 
     steps:
       # Step 1: Download Docker Registry Metadata
