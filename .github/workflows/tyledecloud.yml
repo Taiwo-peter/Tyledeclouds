@@ -44,7 +44,7 @@ jobs:
     needs: build
     env:
       REPOSITORY: registry.digitalocean.com/cloudy001
-      DIRECTORY: Tyledecloud
+      DIRECTORY: Tyledeclouds
       COMPOSE: compose.yml
 
     steps:
