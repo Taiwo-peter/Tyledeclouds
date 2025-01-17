@@ -51,7 +51,7 @@ jobs:
           # Build the Docker Compose services
           docker-compose build
           # Tag the image after building
-          docker tag tyledecloud:${{ env.WORKFLOW_ID }} $IMAGE_NAME
+          docker tag ${{ env.DO_REPOSITORY }}:$IMAGE_TAG $IMAGE_NAME
           # Push the image to the registry
           docker push $IMAGE_NAME
 
