@@ -24,7 +24,7 @@ jobs:
     - name: Build, tag, and push image to DOCR
       id: build-and-push
       env:
-        DOCR_REGISTRY: ${{ steps.login-docr.outputs.registry }}
+        DOCR_REGISTRY:  registry.digitalocean.com
         REPOSITORY: cloudy001
       run: |
         echo "$DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
