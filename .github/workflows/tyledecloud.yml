@@ -23,7 +23,7 @@ jobs:
       id: build-and-push
       env:
         DOCR_REGISTRY: ${{ steps.login-docr.outputs.registry }}
-        REPOSITORY: registry.digitalocean.com/cloudy001
+        REPOSITORY: cloudy001
       run: |
         echo "$DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
         docker build -t $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER} .
