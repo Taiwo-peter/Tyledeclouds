@@ -13,8 +13,8 @@ const HOST = '0.0.0.0'; // Listen on all network interfaces
 
 // Load SSL certificate files
 const options = {
-    key: fs.readFileSync('ssl/key.pem'), // Path to your private key
-    cert: fs.readFileSync('ssl/cert.pem'), // Path to your certificate
+    key: fs.readFileSync('/etc/ssl/private/key.pem'), // Path to your private key
+    cert: fs.readFileSync('/etc/ssl/certs/cert.pem'), // Path to your certificate
 };
 
 // Middleware
