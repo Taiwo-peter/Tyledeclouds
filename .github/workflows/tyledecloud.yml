@@ -59,12 +59,12 @@ jobs:
         DOCR_REGISTRY=$(cat docr_registry.txt)
         echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
 
-        - name: Transfer SSL Certificate to Droplet
-        run: |
-          echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/cert.pem"
-          echo "${{ secrets.PRIVATE_KEY }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/key.pem"
+    - name: Transfer SSL Certificate to Droplet
+      run: |
+        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/cert.pem"
+        echo "${{ secrets.PRIVATE_KEY }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/key.pem"
 
     - name: SSH Login to DigitalOcean Droplet
       uses: appleboy/ssh-action@v1.0.3
