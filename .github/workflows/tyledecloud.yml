@@ -5,7 +5,6 @@ on:
     branches:
       - tyledecloud-server  # Trigger on pushes to the specified branch
 
-
 jobs:
   build:
     name: Build tyldecloudserver_app
@@ -59,12 +58,22 @@ jobs:
         DOCR_REGISTRY=$(cat docr_registry.txt)
         echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
 
+    - name: Setup SSH Key
+      run: |
+        echo "${{ secrets.DROPLET_SSH_KEY }}" | tr -d '\r' > private_key.pem
+        chmod 600 private_key.pem
+
+    - name: Test SSH Connection
+      run: |
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "echo 'SSH Connection Successful'"
+
     - name: Transfer SSL Certificate to Droplet
       run: |
-        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/cert.pem"
-        echo "${{ secrets.PRIVATE_KEY }}" | ssh -i ${{ secrets.DROPLET_SSH_KEY }} \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/key.pem"
+        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/your-certificate.crt"
+        
+        echo "${{ secrets.SSL_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/your-private.key"
 
     - name: SSH Login to DigitalOcean Droplet
       uses: appleboy/ssh-action@v1.0.3
@@ -97,5 +106,3 @@ jobs:
             echo "Error!!!!! Can not recreate service update"
             exit 1
           fi
-
-
