@@ -70,10 +70,10 @@ jobs:
     - name: Transfer SSL Certificate to Droplet
       run: |
         echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/your-certificate.crt"
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/cert.pem"
         
         echo "${{ secrets.SSL_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/your-private.key"
+        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/key.pem"
 
     - name: SSH Login to DigitalOcean Droplet
       uses: appleboy/ssh-action@v1.0.3
