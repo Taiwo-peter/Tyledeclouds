@@ -11,6 +11,8 @@ services:
       - /etc/ssl/private/key.pem:/etc/ssl/private/key.pem:ro  # SSL key mount
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      - SSL_CERT_PATH=/etc/ssl/certs/cert.pem  # Path to SSL certificate
+      - SSL_KEY_PATH=/etc/ssl/private/key.pem  # Path to SSL key
     depends_on:
       db:
         condition: service_healthy  # Wait for healthy DB
@@ -22,14 +24,15 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_TCP_PORT=3306  # Explicitly set TCP port
     volumes:
       - db_data:/var/lib/mysql
       - mysql_sock:/run/mysqld  # MariaDB socket directory
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "db"]  # Check container health
+      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]  # Check container health
       interval: 5s
       timeout: 10s
-      retries: 5
+      retries: 10
 
 volumes:
   db_data:
