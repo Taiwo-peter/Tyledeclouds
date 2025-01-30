@@ -119,6 +119,11 @@ jobs:
           docker compose down -v --remove-orphans || true
           sudo rm -rf /run/mysqld/*
           
+          # Verify SSL files
+          echo "=== SSL Files on Host ==="
+          sudo ls -l /etc/ssl/certs/cert.pem
+          sudo ls -l /etc/ssl/private/key.pem
+
           # Update compose.yml
           cd $DIRECTORY || exit 1
           yq eval 'del(.services.web)' -i $COMPOSE
@@ -128,6 +133,10 @@ jobs:
           
           # Deploy with health checks
           docker compose up --build --force-recreate -d --wait
+          
+          # Wait for database
+          echo "=== Waiting for Database to Start ==="
+          timeout 60s bash -c 'until docker compose exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
           
           # Post-deployment checks
           echo "=== Container Status ==="
@@ -143,4 +152,4 @@ jobs:
           docker compose exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
           
           echo "=== Database Connection Check ==="
-          docker compose exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e "SHOW DATABASES;"
+          docker compose exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
