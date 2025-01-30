@@ -105,17 +105,23 @@ jobs:
           echo "DIRECTORY: $DIRECTORY"
           echo "COMPOSE: $COMPOSE"
           echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated"
+            
+          # Fix here: Use the correct variables for app and db images
           echo -e "Pulling build artifact $DOCR_REGISTRY/$APP_REPOSITORY:${GITHUB_RUN_NUMBER}"
           echo -e "Pulling build artifact $DOCR_REGISTRY/$DB_REPOSITORY:${GITHUB_RUN_NUMBER}"
+            
           # Verify expanded variables
           echo "App image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}"
           echo "DB image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}"
+            
           # Update docker-compose.yml with the new image versions
           cd $DIRECTORY && \
           yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE && \
           yq eval ".services.db.image = \"$DOCR_REGISTRY/$DB_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
+            
           # Deploy the updated services
           docker compose up --build --force-recreate -d
+            
           # Check deployment status
           if [[ $? == 0 ]]; then
             echo "Deployment Successful!!!"
@@ -123,3 +129,4 @@ jobs:
             echo "Error!!!!! Cannot recreate service update"
             exit 1
           fi
+      
