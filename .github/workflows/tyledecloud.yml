@@ -40,7 +40,7 @@ jobs:
         docker push $DOCR_REGISTRY/$DB_REPOSITORY:${GITHUB_RUN_NUMBER}
 
     - name: Upload DOCR Registry
-      uses: actions/upload-artifact@v3.2.0
+      uses: actions/upload-artifact@v4
       with:
         name: docr-registry
         path: docr_registry.txt
