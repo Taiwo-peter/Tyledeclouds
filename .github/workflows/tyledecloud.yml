@@ -104,7 +104,7 @@ jobs:
           echo "DB_REPOSITORY: $DB_REPOSITORY"
           echo "DIRECTORY: $DIRECTORY"
           echo "COMPOSE: $COMPOSE"
-          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated"
+          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated" \nPulling build artifact $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
 
           # Verify expanded variables
           echo "App image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}"
