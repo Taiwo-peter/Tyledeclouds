@@ -82,16 +82,26 @@ jobs:
 
     - name: Transfer SSL Certificate to DigitalOcean Droplet
       run: |
+        # Create SSL directories
         ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo mkdir -p /etc/ssl/certs /etc/ssl/private"
         
+        # Transfer SSL certificate
         echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/certs/cert.pem >/dev/null"
         
+        # Transfer SSL private key
         echo "${{ secrets.SSL_PRIVATE_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/private/key.pem >/dev/null"
         
+        # Set permissions
         ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo chmod 600 /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
+        
+        # Verify SSL files
+        echo "=== Pre-Deployment SSL Verification ==="
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo openssl x509 -in /etc/ssl/certs/cert.pem -noout -text"
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo openssl rsa -in /etc/ssl/private/key.pem -check -noout"
 
     - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
@@ -119,11 +129,6 @@ jobs:
           docker compose down -v --remove-orphans || true
           sudo rm -rf /run/mysqld/*
           
-          # Verify SSL files
-          echo "=== SSL Files on Host ==="
-          sudo ls -l /etc/ssl/certs/cert.pem
-          sudo ls -l /etc/ssl/private/key.pem
-
           # Update compose.yml
           cd $DIRECTORY || exit 1
           yq eval 'del(.services.web)' -i $COMPOSE
@@ -133,10 +138,6 @@ jobs:
           
           # Deploy with health checks
           docker compose up --build --force-recreate -d --wait
-          
-          # Wait for database
-          echo "=== Waiting for Database to Start ==="
-          timeout 60s bash -c 'until docker compose exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
           
           # Post-deployment checks
           echo "=== Container Status ==="
