@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    image: registry.digitalocean.com/cloudy001/tyldecloudserver_app:${GITHUB_RUN_NUMBER}
+    image: registry.digitalocean.com/cloudy001/tyldecloudserver_app:${WORKFLOW_ID}
     ports:
       - "443:443"  # Map port 443 on the host to port 443 in the container
     volumes:
@@ -13,7 +13,7 @@ services:
       - db  # Ensure the database service starts before the app
 
   db:
-    image: registry.digitalocean.com/cloudy001/tyldecloudserver_db:${GITHUB_RUN_NUMBER}  # Pull the latest DB image from the registry
+    image: registry.digitalocean.com/cloudy001/tyldecloudserver_db:${WORKFLOW_ID}  # Pull the latest DB image from the registry
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Load from .env file
       MYSQL_DATABASE: ${MYSQL_DATABASE}  # Load from .env file
