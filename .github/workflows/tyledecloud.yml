@@ -121,8 +121,9 @@ jobs:
           yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE && \
           yq eval ".services.db.image = \"$DOCR_REGISTRY/$DB_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
 
-          # Debugging: Check if GITHUB_RUN_NUMBER is set
-          echo "DEBUG: GITHUB_RUN_NUMBER is set to '$GITHUB_RUN_NUMBER'"
+          # Debugging: Print the contents of the updated compose.yml file
+          echo "DEBUG: Updated compose.yml file:"
+          cat $COMPOSE
 
           # Replace ${GITHUB_RUN_NUMBER} dynamically in compose.yml
           sed -i "s/\${GITHUB_RUN_NUMBER}/$GITHUB_RUN_NUMBER/g" $COMPOSE
