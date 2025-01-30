@@ -1,0 +1,24 @@
+# Use Alpine as the base image
+FROM alpine:3.18
+
+# Set environment variables for MySQL
+ENV MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+ENV MYSQL_DATABASE=${MYSQL_DATABASE}
+ENV MYSQL_USER=${MYSQL_USER}
+ENV MYSQL_PASSWORD=${MYSQL_PASSWORD}
+
+# Install MySQL 5.7 dependencies
+RUN apk --no-cache add mysql mysql-client mysql-server bash
+
+# Create MySQL data directory
+RUN mkdir -p /var/lib/mysql && chown -R mysql:mysql /var/lib/mysql
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Expose MySQL port
+EXPOSE 3306
+
+# Set the default command
+CMD ["entrypoint.sh"]

@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Build tyldecloudserver_app
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
     steps:
     - name: Check out code
@@ -20,16 +20,24 @@ jobs:
         username: oauth2
         password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-    - name: Build, tag, and push image to DOCR
-      id: build-and-push
+    - name: Build, tag, and push app image to DOCR
+      id: build-app
       env:
         DOCR_REGISTRY: registry.digitalocean.com/cloudy001
-        REPOSITORY: tyldecloudserver_app
+        APP_REPOSITORY: tyldecloudserver_app
       run: |
-        echo "$DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
-        docker build -t $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER} .
-        docker push $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}
+        docker build -t $DOCR_REGISTRY/$APP_REPOSITORY:${GITHUB_RUN_NUMBER} -f Dockerfile .
+        docker push $DOCR_REGISTRY/$APP_REPOSITORY:${GITHUB_RUN_NUMBER}
         echo "$DOCR_REGISTRY" > docr_registry.txt
+
+    - name: Build, tag, and push db image to DOCR
+      id: build-db
+      env:
+        DOCR_REGISTRY: registry.digitalocean.com/cloudy001
+        DB_REPOSITORY: tyldecloudserver_db
+      run: |
+        docker build -t $DOCR_REGISTRY/$DB_REPOSITORY:${GITHUB_RUN_NUMBER} -f Dockerfile.db .
+        docker push $DOCR_REGISTRY/$DB_REPOSITORY:${GITHUB_RUN_NUMBER}
 
     - name: Upload DOCR Registry
       uses: actions/upload-artifact@v3
@@ -38,11 +46,12 @@ jobs:
         path: docr_registry.txt
 
   deploy:
-    name: Deploy tyldecloudserver to dev
+    name: Deploy to DigitalOcean Droplet
     runs-on: ubuntu-latest
     needs: build
     env:
-      REPOSITORY: tyldecloudserver_app
+      APP_REPOSITORY: tyldecloudserver_app
+      DB_REPOSITORY: tyldecloudserver_db
       DIRECTORY: tyledecloud
       COMPOSE: compose.yml
 
@@ -57,8 +66,7 @@ jobs:
       run: |
         DOCR_REGISTRY=$(cat docr_registry.txt)
         echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
-    
-    
+
     - name: Setup SSH Key
       run: |
         echo "${{ secrets.DROPLET_SSH_KEY }}" | tr -d '\r' > private_key.pem
@@ -79,34 +87,37 @@ jobs:
         ssh -o StrictHostKeyChecking=no -i private_key.pem \
         ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "chmod 600 /etc/ssl/certs/cert.pem && chmod 600 /etc/ssl/private/key.pem"
 
-    - name: SSH Login to DigitalOcean Droplet
+    - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.DROPLET_IP }}
         username: ${{ secrets.DROPLET_USER }}
         key: ${{ secrets.DROPLET_SSH_KEY }}
         port: ${{ secrets.PORT }}
-        envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,DOCR_REGISTRY,REPOSITORY,DIRECTORY,COMPOSE
+        envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,DOCR_REGISTRY,APP_REPOSITORY,DB_REPOSITORY,DIRECTORY,COMPOSE
         script: |
           echo "Environment Variables:"
           echo "GITHUB_TRIGGERING_ACTOR: $GITHUB_TRIGGERING_ACTOR"
           echo "GITHUB_RUN_NUMBER: $GITHUB_RUN_NUMBER"
           echo "DOCR_REGISTRY: $DOCR_REGISTRY"
-          echo "REPOSITORY: $REPOSITORY"
+          echo "APP_REPOSITORY: $APP_REPOSITORY"
+          echo "DB_REPOSITORY: $DB_REPOSITORY"
           echo "DIRECTORY: $DIRECTORY"
           echo "COMPOSE: $COMPOSE"
-          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated - \nPulling build artifact $DOCR_REGISTRY/$REPOSITORY:${GITHUB_RUN_NUMBER}"
+          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated"
   
-          # Updating the image in docker-compose.yaml using yq (correct syntax for yq)
-          cd $DIRECTORY && yq eval '.services.web.image = "${DOCR_REGISTRY}/${REPOSITORY}:${GITHUB_RUN_NUMBER}"' -i $COMPOSE && \
-  
-          # Running Docker Compose to build and recreate the services
+          # Update docker-compose.yml with the new image versions
+          cd $DIRECTORY && \
+          yq eval '.services.app.image = "${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}"' -i $COMPOSE && \
+          yq eval '.services.db.image = "${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}"' -i $COMPOSE
+
+          # Deploy the updated services
           docker compose up --build --force-recreate -d
 
-          # Checking the exit status to determine if the deployment was successful
+          # Check deployment status
           if [[ $? == 0 ]]; then
             echo "Deployment Successful!!!"
           else
-            echo "Error!!!!! Can not recreate service update"
+            echo "Error!!!!! Cannot recreate service update"
             exit 1
           fi
