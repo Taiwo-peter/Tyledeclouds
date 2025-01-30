@@ -3,7 +3,7 @@ name: CI/CD Pipeline for DigitalOcean
 on:
   push:
     branches:
-      - tyledecloud-server  # Trigger on pushes to the specified branch
+      - tyledecloud-server
 
 jobs:
   build:
@@ -54,6 +54,10 @@ jobs:
       DB_REPOSITORY: tyldecloudserver_db
       DIRECTORY: tyledecloud
       COMPOSE: compose.yml
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
 
     steps:
     - name: Download DOCR Registry
@@ -78,13 +82,16 @@ jobs:
 
     - name: Transfer SSL Certificate to DigitalOcean Droplet
       run: |
-        scp -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.SSL_CERTIFICATE }} \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }}:/etc/ssl/certs/cert.pem
-      
-        scp -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.SSL_PRIVATE_KEY }} \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }}:/etc/ssl/private/key.pem
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo mkdir -p /etc/ssl/certs /etc/ssl/private"
+        
+        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
+          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/certs/cert.pem >/dev/null"
+        
+        echo "${{ secrets.SSL_PRIVATE_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
+          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/private/key.pem >/dev/null"
+        
+        ssh -o StrictHostKeyChecking=no -i private_key.pem \
+          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo chmod 600 /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
 
     - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
@@ -93,55 +100,47 @@ jobs:
         username: ${{ secrets.DROPLET_USER }}
         key: ${{ secrets.DROPLET_SSH_KEY }}
         port: ${{ secrets.PORT }}
-        envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,DOCR_REGISTRY,APP_REPOSITORY,DB_REPOSITORY,DIRECTORY,COMPOSE
+        envs: |
+          GITHUB_TRIGGERING_ACTOR,
+          GITHUB_RUN_NUMBER,
+          DOCR_REGISTRY,
+          APP_REPOSITORY,
+          DB_REPOSITORY,
+          DIRECTORY,
+          COMPOSE,
+          MYSQL_ROOT_PASSWORD,
+          MYSQL_DATABASE,
+          MYSQL_USER,
+          MYSQL_PASSWORD
         script: |
-          echo "Environment Variables:"
-          echo "GITHUB_TRIGGERING_ACTOR: $GITHUB_TRIGGERING_ACTOR"
-          echo "GITHUB_RUN_NUMBER: $GITHUB_RUN_NUMBER"
-          echo "DOCR_REGISTRY: $DOCR_REGISTRY"
-          echo "APP_REPOSITORY: $APP_REPOSITORY"
-          echo "DB_REPOSITORY: $DB_REPOSITORY"
-          echo "DIRECTORY: $DIRECTORY"
-          echo "COMPOSE: $COMPOSE"
-          echo "$GITHUB_TRIGGERING_ACTOR - Deployment Initiated"
-
-          # Validate critical environment variables
-          if [[ -z "$APP_REPOSITORY" || -z "$DB_REPOSITORY" ]]; then
-            echo "Error: APP_REPOSITORY or DB_REPOSITORY is not set."
-            exit 1
-          fi
-
-          # Verify expanded variables
-          echo "App image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}"
-          echo "DB image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}"
-
-          # Update docker-compose.yml with the new image versions
+          echo "=== Starting Deployment ==="
+          
+          # Cleanup previous deployment
+          docker compose down -v --remove-orphans || true
+          sudo rm -rf /run/mysqld/*
+          
+          # Update compose.yml
           cd $DIRECTORY || exit 1
-
-          # 1. Remove invalid services (e.g., 'web') using yq
           yq eval 'del(.services.web)' -i $COMPOSE
-
-          # 2. Update app and db images
           yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
           yq eval ".services.db.image = \"$DOCR_REGISTRY/$DB_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
-
-          # 3. Replace all instances of ${GITHUB_RUN_NUMBER} (including hardcoded values)
-          sed -i \
-            -e "s/\${GITHUB_RUN_NUMBER}/$GITHUB_RUN_NUMBER/g" \
-            -e "s/:79/:$GITHUB_RUN_NUMBER/g" \
-            $COMPOSE
-
-          # Debugging: Print the final compose.yml
-          echo "DEBUG: Final compose.yml:"
-          cat $COMPOSE
-
-          # Deploy the updated services
-          docker compose up --build --force-recreate -d
-
-          # Check deployment status
-          if [[ $? == 0 ]]; then
-            echo "Deployment Successful!!!"
-          else
-            echo "Error!!!!! Cannot recreate service update"
-            exit 1
-          fi
+          sed -i -e "s/:79/:$GITHUB_RUN_NUMBER/g" $COMPOSE
+          
+          # Deploy with health checks
+          docker compose up --build --force-recreate -d --wait
+          
+          # Post-deployment checks
+          echo "=== Container Status ==="
+          docker ps -a
+          
+          echo "=== App Logs ==="
+          docker compose logs app
+          
+          echo "=== DB Logs ==="
+          docker compose logs db
+          
+          echo "=== SSL Certificate Check ==="
+          docker compose exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
+          
+          echo "=== Database Connection Check ==="
+          docker compose exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e "SHOW DATABASES;"
