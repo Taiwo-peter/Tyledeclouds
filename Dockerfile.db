@@ -1,11 +1,18 @@
 # Use Alpine as the base image
 FROM alpine:3.18
 
-# Install MariaDB (MySQL replacement) and bash
+# Install MariaDB (compatible with MySQL 5.7)
 RUN apk --no-cache add mariadb mariadb-client bash
 
-# Set up MySQL data directory
-RUN mkdir -p /var/lib/mysql && chown -R mysql:mysql /var/lib/mysql
+# Set environment variables (optional, better to pass as env during runtime)
+ENV MYSQL_ROOT_PASSWORD=root
+ENV MYSQL_DATABASE=testdb
+ENV MYSQL_USER=testuser
+ENV MYSQL_PASSWORD=testpass
+
+# Create MySQL data directory and set permissions
+RUN mkdir -p /var/lib/mysql \
+    && chown -R mysql:mysql /var/lib/mysql
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/
@@ -14,5 +21,5 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Expose MySQL port
 EXPOSE 3306
 
-# Set entrypoint
+# Set entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
