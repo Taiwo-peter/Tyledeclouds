@@ -3,37 +3,24 @@ version: '3.8'
 services:
   app:
     image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}
-    ports:
-      - "443:443"
     volumes:
-      - .:/usr/src/app
-      - /etc/ssl/certs/cert.pem:/etc/ssl/certs/cert.pem:ro  # SSL certificate mount
-      - /etc/ssl/private/key.pem:/etc/ssl/private/key.pem:ro  # SSL key mount
+      - /etc/ssl/certs/cert.pem:/etc/ssl/certs/cert.pem:ro
+      - /etc/ssl/private/key.pem:/etc/ssl/private/key.pem:ro
     environment:
-      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
-      - SSL_CERT_PATH=/etc/ssl/certs/cert.pem  # Path to SSL certificate
-      - SSL_KEY_PATH=/etc/ssl/private/key.pem  # Path to SSL key
+      - SSL_CERT_PATH=/etc/ssl/certs/cert.pem
+      - SSL_KEY_PATH=/etc/ssl/private/key.pem
     depends_on:
       db:
-        condition: service_healthy  # Wait for healthy DB
+        condition: service_healthy
 
   db:
     image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_TCP_PORT=3306  # Explicitly set TCP port
-    volumes:
-      - db_data:/var/lib/mysql
-      - mysql_sock:/run/mysqld  # MariaDB socket directory
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_TCP_PORT=3306
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]  # Check container health
+      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 10s
-      retries: 10
-
-volumes:
-  db_data:
-  mysql_sock:  # Socket volume declaration
+      retries: 15

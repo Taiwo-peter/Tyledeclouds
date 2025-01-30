@@ -82,26 +82,16 @@ jobs:
 
     - name: Transfer SSL Certificate to DigitalOcean Droplet
       run: |
-        # Create SSL directories
         ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo mkdir -p /etc/ssl/certs /etc/ssl/private"
         
-        # Transfer SSL certificate
         echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/certs/cert.pem >/dev/null"
         
-        # Transfer SSL private key
         echo "${{ secrets.SSL_PRIVATE_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/private/key.pem >/dev/null"
         
-        # Set permissions
         ssh -o StrictHostKeyChecking=no -i private_key.pem \
           ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo chmod 600 /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
-        
-        # Verify SSL files
-        echo "=== Pre-Deployment SSL Verification ==="
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo openssl x509 -in /etc/ssl/certs/cert.pem -noout -text"
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo openssl rsa -in /etc/ssl/private/key.pem -check -noout"
 
     - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
@@ -123,26 +113,25 @@ jobs:
           MYSQL_USER,
           MYSQL_PASSWORD
         script: |
-          # Cleanup
-          docker compose down -v --remove-orphans || true
+          # Cleanup with orphan removal
+          docker compose -f $DIRECTORY/$COMPOSE down -v --remove-orphans || true
           sudo rm -rf /run/mysqld/*
-          
-          # Verify SSL files
-          echo "=== SSL Certificate Verification ==="
-          sudo ls -l /etc/ssl/certs/cert.pem
-          sudo ls -l /etc/ssl/private/key.pem
-          
-          # Deploy
+
+          # Verify compose file
+          echo "=== compose.yml Verification ==="
+          ls -l $DIRECTORY/$COMPOSE
+
+          # Deploy with explicit compose file
           cd $DIRECTORY
-          docker compose up --build --force-recreate -d --wait
-          
-          # Wait for DB
-          echo "=== Waiting for Database ==="
-          timeout 120s bash -c 'until docker compose exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
-          
-          # Final checks
-          echo "=== SSL Check in App Container ==="
-          docker compose exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
-          
+          docker compose -f $COMPOSE up --build --force-recreate -d --wait
+
+          # Wait for database with extended timeout
+          echo "=== Waiting for Database (2m timeout) ==="
+          timeout 120s bash -c 'until docker compose -f $COMPOSE exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
+
+          # Final verification
+          echo "=== SSL Certificate Check ==="
+          docker compose -f $COMPOSE exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
+
           echo "=== Database Connection Test ==="
-          docker compose exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
+          docker compose -f $COMPOSE exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
