@@ -2,11 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build: 
-      context: .
-      dockerfile: Dockerfile  # Ensure the correct case (Dockerfile)
-    image: registry.digitalocean.com/cloudy001/tyldecloudserver_app:latest
-    restart: always
+    image: registry.digitalocean.com/cloudy001/tyldecloudserver_app:${GITHUB_RUN_NUMBER}
     ports:
       - "443:443"  # Map port 443 on the host to port 443 in the container
     volumes:
@@ -14,14 +10,10 @@ services:
     env_file: 
       - .env  # Load environment variables from the .env file
     depends_on:
-      db:
-        condition: service_healthy  # Wait for the database to be ready
-    networks:
-      - backend
+      - db  # Ensure the database service starts before the app
 
   db:
-    image: mysql:5.7  # Use the MySQL 5.7 image
-    restart: always
+    image: registry.digitalocean.com/cloudy001/tyldecloudserver_db:${GITHUB_RUN_NUMBER}  # Pull the latest DB image from the registry
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Load from .env file
       MYSQL_DATABASE: ${MYSQL_DATABASE}  # Load from .env file
@@ -31,17 +23,6 @@ services:
       - "3306:3306"  # Map port 3306 on the host to port 3306 in the container
     volumes:
       - db_data:/var/lib/mysql  # Persist database data
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-    networks:
-      - backend
 
 volumes:
   db_data:  # Named volume for MySQL data persistence
-
-networks:
-  backend:
-    driver: bridge
