@@ -66,8 +66,6 @@ jobs:
       run: |
         DOCR_REGISTRY=$(cat docr_registry.txt)
         echo "DOCR_REGISTRY=$DOCR_REGISTRY" >> $GITHUB_ENV
-        echo "APP_REPOSITORY=tyldecloudserver_app" >> $GITHUB_ENV
-        echo "DB_REPOSITORY=tyldecloudserver_db" >> $GITHUB_ENV
 
     - name: Setup SSH Key
       run: |
