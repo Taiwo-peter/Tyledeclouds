@@ -117,16 +117,24 @@ jobs:
           echo "DB image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}"
 
           # Update docker-compose.yml with the new image versions
-          cd $DIRECTORY && \
-          yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE && \
+          cd $DIRECTORY || exit 1
+
+          # 1. Remove invalid services (e.g., 'web') using yq
+          yq eval 'del(.services.web)' -i $COMPOSE
+
+          # 2. Update app and db images
+          yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
           yq eval ".services.db.image = \"$DOCR_REGISTRY/$DB_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
 
-          # Debugging: Print the contents of the updated compose.yml file
-          echo "DEBUG: Updated compose.yml file:"
-          cat $COMPOSE
+          # 3. Replace all instances of ${GITHUB_RUN_NUMBER} (including hardcoded values)
+          sed -i \
+            -e "s/\${GITHUB_RUN_NUMBER}/$GITHUB_RUN_NUMBER/g" \
+            -e "s/:79/:$GITHUB_RUN_NUMBER/g" \
+            $COMPOSE
 
-          # Replace ${GITHUB_RUN_NUMBER} dynamically in compose.yml
-          sed -i "s/\${GITHUB_RUN_NUMBER}/$GITHUB_RUN_NUMBER/g" $COMPOSE
+          # Debugging: Print the final compose.yml
+          echo "DEBUG: Final compose.yml:"
+          cat $COMPOSE
 
           # Deploy the updated services
           docker compose up --build --force-recreate -d
