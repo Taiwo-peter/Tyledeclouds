@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}  # Use DOCR_REGISTRY and APP_REPOSITORY variables
+    image: ${DOCR_REGISTRY}/${APP_REPOSITORY}:${GITHUB_RUN_NUMBER}  # Use DOCR_REGISTRY and APP_REPOSITORY
     ports:
       - "443:443"  # Map port 443 on the host to port 443 in the container
     volumes:
@@ -13,7 +13,7 @@ services:
       - db  # Ensure the database service starts before the app
 
   db:
-    image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}  # Use DOCR_REGISTRY and DB_REPOSITORY variables
+    image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}  # Use DOCR_REGISTRY and DB_REPOSITORY
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Load from .env file
       MYSQL_DATABASE: ${MYSQL_DATABASE}  # Load from .env file
