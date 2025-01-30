@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/bin/bash
+set -e
 
-# Ensure MySQL data directory is initialized
+# Initialize database if not already initialized
 if [ ! -d "/var/lib/mysql/mysql" ]; then
-    echo "Initializing database..."
-    mysql_install_db --user=mysql --datadir=/var/lib/mysql > /dev/null
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql
 fi
 
-# Start MariaDB service in the background
-exec mysqld --user=mysql --datadir=/var/lib/mysql
+# Start MariaDB
+exec mysqld_safe --user=mysql --datadir=/var/lib/mysql

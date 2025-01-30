@@ -7,20 +7,30 @@ services:
       - "443:443"
     volumes:
       - .:/usr/src/app
-    env_file: 
-      - .env
+      - /etc/ssl/certs/cert.pem:/etc/ssl/certs/cert.pem:ro  # SSL certificate mount
+      - /etc/ssl/private/key.pem:/etc/ssl/private/key.pem:ro  # SSL key mount
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
     depends_on:
-      - db
+      db:
+        condition: service_healthy  # Wait for healthy DB
 
   db:
     image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}
-    ports:
-      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      - mysql_sock:/run/mysqld  # Add this line
-    # ... rest of your config
+      - mysql_sock:/run/mysqld  # MariaDB socket directory
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "db"]  # Check container health
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
 volumes:
   db_data:
-  mysql_sock:  # Declare the volume
+  mysql_sock:  # Socket volume declaration

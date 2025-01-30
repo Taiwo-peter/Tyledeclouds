@@ -78,14 +78,13 @@ jobs:
 
     - name: Transfer SSL Certificate to DigitalOcean Droplet
       run: |
-        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/certs/cert.pem"
-
-        echo "${{ secrets.SSL_PRIVATE_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "cat > /etc/ssl/private/key.pem"
-
-        ssh -o StrictHostKeyChecking=no -i private_key.pem \
-        ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "chmod 600 /etc/ssl/certs/cert.pem && chmod 600 /etc/ssl/private/key.pem"
+        scp -o StrictHostKeyChecking=no -i private_key.pem \
+          ${{ secrets.SSL_CERTIFICATE }} \
+          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }}:/etc/ssl/certs/cert.pem
+      
+        scp -o StrictHostKeyChecking=no -i private_key.pem \
+          ${{ secrets.SSL_PRIVATE_KEY }} \
+          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }}:/etc/ssl/private/key.pem
 
     - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
