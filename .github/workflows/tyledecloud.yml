@@ -118,6 +118,12 @@ jobs:
           cd $DIRECTORY && \
           yq eval ".services.app.image = \"$DOCR_REGISTRY/$APP_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE && \
           yq eval ".services.db.image = \"$DOCR_REGISTRY/$DB_REPOSITORY:$GITHUB_RUN_NUMBER\"" -i $COMPOSE
+
+          # Debugging: Check if GITHUB_RUN_NUMBER is set
+          echo "DEBUG: GITHUB_RUN_NUMBER is set to '$GITHUB_RUN_NUMBER'"
+
+          # Replace ${GITHUB_RUN_NUMBER} dynamically in compose.yml
+          sed -i "s/\${GITHUB_RUN_NUMBER}/$GITHUB_RUN_NUMBER/g" $COMPOSE
             
           # Deploy the updated services
           docker compose up --build --force-recreate -d
