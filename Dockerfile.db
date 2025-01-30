@@ -1,20 +1,6 @@
-# Use Alpine as the base image
 FROM alpine:3.18
-
-# Install MariaDB and dependencies
-RUN apk --no-cache add mariadb mariadb-client bash
-
-# Create required directories with proper permissions
-RUN mkdir -p /var/lib/mysql /run/mysqld && \
-    chown -R mysql:mysql /var/lib/mysql /run/mysqld && \
-    chmod 777 /run/mysqld  # Allow socket creation
-
-# Copy entrypoint script
+RUN apk add --no-cache mariadb mariadb-client bash
+RUN mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Expose MySQL port
-EXPOSE 3306
-
-# Set entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
