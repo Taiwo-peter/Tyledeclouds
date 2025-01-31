@@ -9,11 +9,21 @@ services:
     environment:
       - SSL_CERT_PATH=/etc/ssl/certs/cert.pem
       - SSL_KEY_PATH=/etc/ssl/private/key.pem
+      # Add database connection variables
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:443/health"] 
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   db:
     image: your-registry/db-image:tag
@@ -24,9 +34,18 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      - mysql_sock:/run/mysqld
+      # Remove mysql_sock unless explicitly needed
+    # Add MySQL configuration to ensure TCP connections
+    command: [
+      '--bind-address=0.0.0.0',
+      '--skip-name-resolve'
+    ]
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /etc/ssl/certs/cert.pem ] && [ -f /etc/ssl/private/key.pem ]"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  db_data:

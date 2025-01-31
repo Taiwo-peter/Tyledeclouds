@@ -1,9 +1,6 @@
-#!/bin/sh
-# Wait for database to be ready
-while ! mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SELECT 1"; do
+while ! nc -z db 3306; do
   echo "Waiting for database..."
   sleep 2
 done
-
-# Start application
-exec "$@"
+# Start the application
+exec ./your-app
