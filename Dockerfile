@@ -12,9 +12,12 @@ RUN npm install --production
 
 # Copy the rest of your application code to the working directory
 COPY . .
+# Copy the wait-for.sh script and make it executable
+COPY wait-for.sh /wait-for.sh
+RUN chmod +x /wait-for.sh
 
-# Expose the port that the app runs on
+# Expose the application port (if needed)
 EXPOSE 443
 
-# Command to run the application
-CMD ["node", "server.js"]
+# Define the command to run the application
+CMD ["/wait-for.sh", "db:3306", "--", "npm", "start"]
