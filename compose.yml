@@ -24,7 +24,7 @@ services:
       - db_data:/var/lib/mysql
       - mysql_sock:/run/mysqld
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 10s
+      test: ["CMD-SHELL", "[ -f /etc/ssl/certs/cert.pem ] && [ -f /etc/ssl/private/key.pem ]"]
+      interval: 10s
+      timeout: 5s
       retries: 5

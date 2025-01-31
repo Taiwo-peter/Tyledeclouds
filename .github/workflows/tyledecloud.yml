@@ -82,16 +82,18 @@ jobs:
 
     - name: Transfer SSL Certificate to DigitalOcean Droplet
       run: |
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo mkdir -p /etc/ssl/certs /etc/ssl/private"
-        
-        echo "${{ secrets.SSL_CERTIFICATE }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/certs/cert.pem >/dev/null"
-        
-        echo "${{ secrets.SSL_PRIVATE_KEY }}" | ssh -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo tee /etc/ssl/private/key.pem >/dev/null"
-        
-        ssh -o StrictHostKeyChecking=no -i private_key.pem \
-          ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} "sudo chmod 600 /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} \
+          "sudo mkdir -p /etc/ssl/certs /etc/ssl/private && \
+          echo '${{ secrets.SSL_CERTIFICATE }}' | sudo tee /etc/ssl/certs/cert.pem >/dev/null && \
+          echo '${{ secrets.SSL_PRIVATE_KEY }}' | sudo tee /etc/ssl/private/key.pem >/dev/null && \
+          sudo chmod 644 /etc/ssl/certs/cert.pem && \
+          sudo chmod 600 /etc/ssl/private/key.pem"   
+          
+    - name: Validate SSL Files on Droplet
+      run: |
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} \
+          "ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem"
+
 
     - name: SSH Login to DigitalOcean Droplet and Deploy
       uses: appleboy/ssh-action@v1.0.3
@@ -128,6 +130,11 @@ jobs:
           # Wait for database with extended timeout
           echo "=== Waiting for Database (2m timeout) ==="
           timeout 120s bash -c 'until docker compose -f $COMPOSE exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
+
+          # ...
+          echo "=== Database Connection Test ==="
+          docker compose -f $COMPOSE exec app \
+            mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
 
           # Final verification
           echo "=== SSL Certificate Check ==="
