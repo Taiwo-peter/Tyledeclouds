@@ -7,8 +7,6 @@ services:
       - /etc/ssl/certs/cert.pem:/etc/ssl/certs/cert.pem
       - /etc/ssl/private/key.pem:/etc/ssl/private/key.pem
     environment:
-      - SSL_CERT_PATH=/etc/ssl/certs/cert.pem
-      - SSL_KEY_PATH=/etc/ssl/private/key.pem
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=${MYSQL_USER}
@@ -18,20 +16,17 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:443/health"]
       interval: 15s
       timeout: 10s
       retries: 10
       start_period: 30s
-    # Add restart policy for resilience
     restart: unless-stopped
-    # Add explicit port binding for debugging
     ports:
-      - "3000:3000"
       - "443:443"
 
   db:
-    image: your-registry/db-image:tag
+    image: ${DOCR_REGISTRY}/${DB_REPOSITORY}:${GITHUB_RUN_NUMBER}
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -39,19 +34,12 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      # Add MySQL configuration file
-      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
-    command: [
-      '--bind-address=0.0.0.0',
-      '--skip-name-resolve'
-    ]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$MYSQL_USER", "-p$MYSQL_PASSWORD"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 15s
-    # Add restart policy for resilience
     restart: unless-stopped
 
 volumes:

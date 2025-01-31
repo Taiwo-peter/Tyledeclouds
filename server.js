@@ -5,7 +5,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const https = require('https');
 const fs = require('fs');
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');  // Changed to promise-based interface
 
 const app = express();
 const PORT = 443;
@@ -31,87 +31,103 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('frontend'));
 
-// MySQL connection setup
-const db = mysql.createConnection({
+// MySQL connection pool setup
+const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-// Connect to the database with error handling
-db.connect(err => {
-    if (err) {
+// Verify connection on startup
+pool.getConnection()
+    .then(conn => {
+        console.log('Connected to MySQL database');
+        conn.release();
+    })
+    .catch(err => {
         console.error('Database connection failed:', err);
         process.exit(1);
-    }
-    console.log('Connected to MySQL database.');
-});
+    });
 
 // Routes
+app.get('/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.status(200).send('OK');
+    } catch (err) {
+        res.status(500).send();
+    }
+});
+
 app.get('/', (req, res) => {
     res.send('Hello, HTTPS world!');
 });
 
-app.post('/api/contact', (req, res) => {
+app.post('/api/contact', async (req, res) => {
     const { name, email, message } = req.body;
 
     if (!name || !email || !message) {
         return res.status(400).json({ error: 'All fields are required.' });
     }
 
-    const query = 'INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)';
-    db.query(query, [name, email, message], (err) => {
-        if (err) {
-            console.error('Error saving contact message:', err);
-            return res.status(500).json({ error: 'Internal server error. Please try again later.' });
-        }
-        console.log(`New contact form submission: Name: ${name}, Email: ${email}, Message: ${message}`);
-        res.status(200).json({ message: 'Your message has been received. We will get back to you soon!' });
-    });
+    try {
+        await pool.query(
+            'INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)',
+            [name, email, message]
+        );
+        console.log(`New contact submission: ${name}, ${email}, ${message}`);
+        res.status(200).json({ message: 'Message received successfully!' });
+    } catch (err) {
+        console.error('Contact form error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 app.post('/api/signup', async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required.' });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Invalid email format.' });
-    }
-
-    if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
-    }
-
-    const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
-    db.query(checkUserQuery, [email], async (err, results) => {
-        if (err) {
-            console.error('Error checking user existence:', err);
-            return res.status(500).json({ error: 'Internal server error. Please try again later.' });
-        }
-        if (results.length > 0) {
-            return res.status(400).json({ error: 'Email is already registered.' });
+    
+    try {
+        // Validation
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
         }
 
-        try {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const insertUserQuery = 'INSERT INTO users (email, password) VALUES (?, ?)';
-            db.query(insertUserQuery, [email, hashedPassword], (err) => {
-                if (err) {
-                    console.error('Error during sign-up:', err);
-                    return res.status(500).json({ error: 'Internal server error. Please try again later.' });
-                }
-                console.log(`New user signed up: Email: ${email}`);
-                res.status(201).json({ message: 'Sign-up successful! Welcome to Tyledeclouds.' });
-            });
-        } catch (error) {
-            console.error('Error during password hashing:', error);
-            res.status(500).json({ error: 'Internal server error. Please try again later.' });
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
         }
-    });
+
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be ≥6 characters' });
+        }
+
+        // Check existing user
+        const [users] = await pool.query(
+            'SELECT * FROM users WHERE email = ?',
+            [email]
+        );
+
+        if (users.length > 0) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
+
+        // Hash password and create user
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query(
+            'INSERT INTO users (email, password) VALUES (?, ?)',
+            [email, hashedPassword]
+        );
+
+        console.log(`New user: ${email}`);
+        res.status(201).json({ message: 'Signup successful!' });
+    } catch (err) {
+        console.error('Signup error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 app.get('/api/data', (req, res) => {
@@ -121,5 +137,5 @@ app.get('/api/data', (req, res) => {
 // Create HTTPS server
 const server = https.createServer(options, app);
 server.listen(PORT, HOST, () => {
-    console.log(`Server is running on https://${HOST}:${PORT}`);
+    console.log(`Server running on https://${HOST}:${PORT}`);
 });
