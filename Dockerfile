@@ -20,4 +20,4 @@ COPY wait-for.sh /wait-for.sh
 RUN chmod +x /wait-for.sh
 
 # Command to run the application
-CMD ["/wait-for.sh", "db:3306", "--", "node", "server.js"]
+CMD ["node", "server.js"]
