@@ -10,14 +10,18 @@ COPY package*.json ./
 # Install the application dependencies
 RUN npm install --production
 
-# Copy the rest of your application code to the working directory
-COPY . .
 # Copy the wait-for.sh script and make it executable
 COPY wait-for.sh /wait-for.sh
 RUN chmod +x /wait-for.sh
 
-# Expose the application port (if needed)
+# Install netcat (required for wait-for.sh)
+RUN apk add --no-cache netcat-openbsd
+
+# Copy the rest of your application code to the working directory
+COPY . .
+
+# Expose the port that the app runs on
 EXPOSE 443
 
-# Define the command to run the application
-CMD ["/wait-for.sh", "db:3306", "--", "npm", "start"]
+# Command to run the application with wait-for.sh
+CMD ["/wait-for.sh", "db:3306", "--", "node", "server.js"]
