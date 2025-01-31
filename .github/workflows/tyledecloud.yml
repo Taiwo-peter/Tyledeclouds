@@ -115,20 +115,30 @@ jobs:
           MYSQL_USER,
           MYSQL_PASSWORD
         script: |
-          script: |
-            # ... cleanup and startup commands ...
+          # Cleanup with orphan removal
+          docker compose -f $DIRECTORY/$COMPOSE down -v --remove-orphans || true
+          sudo rm -rf /run/mysqld/*
 
-            # Wait for BOTH services
-            echo "=== Waiting for Services ==="
-            timeout 120s bash -c 'until [ "$(docker compose ps --services --filter health=healthy | wc -l)" -eq 2 ]; do sleep 2; done'
+          # Verify compose file
+          echo "=== compose.yml Verification ==="
+          ls -l $DIRECTORY/$COMPOSE
 
-            # Run tests from APP container
-            echo "=== SSL Certificate Check ==="
-            docker compose exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
+          # Deploy with explicit compose file
+          cd $DIRECTORY
+          docker compose -f $COMPOSE up --build --force-recreate -d --wait
 
-            echo "=== Database Connection Test ==="
-            docker compose exec app mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;" # ... existing deployment commands ...
-  
-            echo "=== MySQL User Verification ==="
-            docker compose exec db mysql -uroot -p$MYSQL_ROOT_PASSWORD -e \
-              "SELECT user, host FROM mysql.user WHERE user = '$MYSQL_USER';"
+          # Wait for database with extended timeout
+          echo "=== Waiting for Database (2m timeout) ==="
+          timeout 120s bash -c 'until docker compose -f $COMPOSE exec db mysqladmin ping -u root -p$MYSQL_ROOT_PASSWORD --silent; do sleep 2; done'
+
+          # ...
+          echo "=== Database Connection Test ==="
+          docker compose -f $COMPOSE exec app \
+            mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
+
+          # Final verification
+          echo "=== SSL Certificate Check ==="
+          docker compose -f $COMPOSE exec app ls -l /etc/ssl/certs/cert.pem /etc/ssl/private/key.pem
+
+          echo "=== Database Connection Test ==="
+          docker compose -f $COMPOSE exec db mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -h db -e "SHOW DATABASES;"
