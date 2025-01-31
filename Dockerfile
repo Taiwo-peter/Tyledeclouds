@@ -16,8 +16,5 @@ COPY . .
 # Expose the port that the app runs on
 EXPOSE 443
 
-COPY wait-for.sh /wait-for.sh
-RUN chmod +x /wait-for.sh
-
 # Command to run the application
 CMD ["node", "server.js"]
