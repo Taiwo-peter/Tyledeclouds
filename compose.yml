@@ -9,7 +9,6 @@ services:
     environment:
       - SSL_CERT_PATH=/etc/ssl/certs/cert.pem
       - SSL_KEY_PATH=/etc/ssl/private/key.pem
-      # Add database connection variables
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=${MYSQL_USER}
@@ -24,6 +23,12 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    # Add restart policy for resilience
+    restart: unless-stopped
+    # Add explicit port binding for debugging
+    ports:
+      - "3000:3000"
+      - "443:443"
 
   db:
     image: your-registry/db-image:tag
@@ -34,8 +39,8 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      # Remove mysql_sock unless explicitly needed
-    # Add MySQL configuration to ensure TCP connections
+      # Add MySQL configuration file
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
     command: [
       '--bind-address=0.0.0.0',
       '--skip-name-resolve'
@@ -46,6 +51,8 @@ services:
       timeout: 3s
       retries: 10
       start_period: 15s
+    # Add restart policy for resilience
+    restart: unless-stopped
 
 volumes:
   db_data:
