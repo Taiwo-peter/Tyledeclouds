@@ -9,7 +9,14 @@ RUN mkdir -p /var/lib/mysql /run/mysqld && \
     chown -R mysql:mysql /var/lib/mysql /run/mysqld && \
     chmod 755 /run/mysqld  # Secure directory permissions
 
+# Create the MySQL configuration directory
+RUN mkdir -p /etc/mysql/conf.d
+
+# Write the bind-address configuration
 RUN echo "[mysqld]\nbind-address = 0.0.0.0" > /etc/mysql/conf.d/bind.cnf
+
+# Secure directory permissions
+RUN chmod 755 /run/mysqld
 
 # Expose MySQL port
 EXPOSE 3306
