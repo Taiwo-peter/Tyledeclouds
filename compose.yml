@@ -24,7 +24,11 @@ services:
       - db_data:/var/lib/mysql
       - mysql_sock:/run/mysqld
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 10s
-      retries: 15
+      retries: 5
+
+networks:
+  default:
+    name: tyledecloud_default
